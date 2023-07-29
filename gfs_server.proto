@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+
+package ChunkServer;
+
+service ChunkService{
+  rpc get_heartbeat(VoidMessage) returns(HeartBeat){} // 上面的接口中，必须有参数和返回值，如果不需要参数或者返回值，也必须定义一个空的（没有成员）message，否则无法通过编译。
+}
+
+message VoidMessage{
+
+}
+
+message HeartBeat{
+  int32 worktimes = 1;
+  int32 chunkaddcount = 2;
+  repeated int64 chunkaddlist = 3;  // 增加的chunk列表
+  repeated int64 chunkdellist = 4;  // 删除的chunk列表
+}
+
+
+
