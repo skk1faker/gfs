@@ -7,17 +7,15 @@ package gfs;
 service ChunkService{
   //rpc get_heartbeat(VoidMessage) returns(HeartBeat){} // 上面的接口中，必须有参数和返回值，如果不需要参数或者返回值，也必须定义一个空的（没有成员）message，否则无法通过编译。
   // 读写, 注意读写的时候修改元数据。
-  rpc write_chunk(ChunkData)returns(){} 
-  rpc delete_chunk(ChunkData)returns(){}    // 只使用chunkdata中的一些数据标识
-  rpc add_new_chunk(Chunk)
+  rpc write_chunk(ChunkData)returns(VoidMessage){} 
+  rpc delete_chunk(ChunkPosiIn)returns(VoidMessage){}    // 只使用chunkdata中的一些数据标识
+  rpc delete_all_chunk(Chunkid)returns(VoidMessage){}    // 只使用chunkdata中的一些数据标识
+  rpc read_chunk(ChunkPosiIn)returns(ChunkData){}    // 只使用chunkdata中的一些数据标识
+  rpc create_chunk(CreateChunkidList)returns(VoidMessage){}
   // 上报信息
-  rpc report_info()returns(ChunkServerInfo){}   // 包括负载均衡的一些信息
 
 }
-message ChunkServerInfo{
-  int32 last_add_chunk_num;
-  int64 remain_space;
-}
+
 service Master{
   /*
     master的主要功能应该是什么？
@@ -28,49 +26,55 @@ service Master{
     5. raft，一个简易的raft（目前可以不实现）,只实现选举和日志复制的部分。
   */
   // 获取读写信息
-  rpc get_write(FilePosition)returns(ChunkList){}       // 首先获取锁，（锁是元数据，需要添加master日志）然后返回相应的chunk元数据，如果需要创建chunk则首先chunkserver创建chunk，然后chunkserver修改成功将返回给master，master这时修改元数据，并加日志，chunk修改成功。
-  rpc write_successful()returns(WriteSuccessfulPosition){}   // 当chunkserver写成功时会将成功的写返回给master，master会进行元数据中文件长度的修改。
+  rpc get_write_chunk_list(FilePosition)returns(ChunkList){}       // 首先获取锁，（锁是元数据，需要添加master日志）然后返回相应的chunk元数据，如果需要创建chunk则首先chunkserver创建chunk，然后chunkserver修改成功将返回给master，master这时修改元数据，并加日志，chunk修改成功。
+  rpc write_successful(WriteSuccessfulPosition)returns(VoidMessage){}   // 当chunkserver写成功时会将成功的写返回给master，master会进行元数据中文件长度的修改。
   // 锁状态的维护都在客户端，让逻辑连贯。
-  rpc write_lock()returns(){}       // 写前client调用
-  rpc write_unlock()returns(){}     // 写成功或者失败之后client都会调用。
-  rpc get_read(FilePosition)returns(ChunkList){}        // 首先获取锁，加上锁修改日志，然后返回相应的chunk元数据
+  rpc write_lock(FilePath)returns(VoidMessage){}       // 写前client调用
+  rpc write_unlock(FilePath)returns(VoidMessage){}     // 写成功或者失败之后client都会调用。
+  rpc get_read_chunk_list(FilePosition)returns(ChunkList){}        // 首先获取锁，加上锁修改日志，然后返回相应的chunk元数据
   //
-  rpc read_lock()returns(){}        // 读前client调用
-  rpc read_unlock()returns(){}      // 读后成功或者失败client都会调用。
+  rpc read_lock(FilePath)returns(VoidMessage){}        // 读前client调用
+  rpc read_unlock(FilePath)returns(VoidMessage){}      // 读后成功或者失败client都会调用。
+  rpc heartbeat(ChunkServerInfo)returns(VoidMessage){}    // 用于chunkserver上报信息，放在这边是为了方便chunkserver加入方便。如果有一个新的chunkserver加入，那么列表中会有新的chunkserver信息，就算chunkserver加入了
   // 日志维护,也是元数据的维护。日志可以使用一个结构体如下：
   /*
-    struct log{
-      enum op{
-        ADDCHUNK,
-        DELCHUNK,
-          ...
-      }
-      union opdata{
-        struct addchunk add;
-        struct delchunk del;
-      }
-    };
-    struct addchunk{};
-    struct delchunk{};
     什么时候将元数据写入？应该在chunkserver确定执行结束之后。
     1. 创建一个chunk之后应该立即将chunk创建命令发给chunkserver，chunkserver创建成功之后会返回，告诉master创建成功，并修改元数据。
     2. 一个数据写成功时，文件的最后一个chunk应该修改，chunkserver写成功后会将修改返回。
     3. lease租约修改的时候，租约相关的chunkversion也要修改，这个信息由master唯一指定，所以不需要chunkserver进行参与设置。
   */
-  rpc get_new_chunkserver_posi()returns(IpPort){}           // 获取新增chunkserver位置应放置的位置。
-  rpc get_add_chunk_posi()returns(ChunkPosi){};       // 负载均衡函数，新增一个chunk
+  rpc get_add_chunk_posi(VoidMessage)returns(ChunkPosi){};       // 负载均衡函数，新增一个chunk
   rpc change_lease(ChunkPosi)returns(ChunkPosi){}     // lease分配函数，根据lease在三个server中的分配情况。
-
-  rpc heartbeat(ChunkServerInfo)returns(){}    // 用于chunkserver上报信息，放在这边是为了方便chunkserver加入方便。如果有一个新的chunkserver加入，那么列表中会有新的chunkserver信息，就算chunkserver加入了
-  rpc chunkserverdown()returns(){}      // chunkserver宕机处理函数，主要用于转移chunk，分配一个chunk到某个服务器，然后让chunkserver向另一个chunkserver写即可，并维护元数据。
-  rpc chunkserverup()returns(){}        // chunkserver重启处理函数，首先要停止chunkserverdown函数，线程间通讯，可以使用一个共有的变量。这时，通知chunkserver删除一些元数据，因为这个chunkserver中的chunk可能已经被转移了。
-  
   /*
   master 宕机处理。
   rpc raft_ 5. 
   */
 
 }
+message FilePath{
+  repeated string filename = 1;       // 数组代表一个路径
+}
+message FilePosition{
+  FilePath filepath = 1;
+  int64 startposi = 2;                // 读写开始位置
+  int32 wrlength = 3;                   // 读写长度
+}
+message WriteSuccessfulPosition{      // 追加成功之后维护数据的长度。
+  repeated int64 chunkid = 1;             // 那个chunk
+  repeated int64 length = 2;              // 改变之后的长度
+}
+message VoidMessage{
+
+}
+message ChunkPosiIn{            // chunk内部信息
+  int32 startposi = 1;          // chunk中开始长度
+  int32 length = 2;             // 写入数据长度
+}
+message ChunkData{  // 用于写入chunk
+  ChunkPosiIn posi = 1;
+  bytes data = 2;     // set_data(字符串)即可。
+}
+
 message ChunkPosi{
   int64 chunkid = 1;                  // chunkid
   repeated IpPort location = 2;       // 三台服务器位置
@@ -80,33 +84,22 @@ message ChunkPosi{
 message ChunkList{
   repeated ChunkPosi chunks = 1; 
 }
-message FilePosition{
-  repeated string filename = 1;       // 数组代表一个路径
-  
-  int32 length = 2;                   // 书写长度
-}
-message WriteSuccessfulPosition{      // 追加成功之后维护数据的长度。
-  int64 inchunkposi;
-  int64 beforechunknum;
-}
-message VoidMessage{
-
-}
-message ChunkData{  // 用于写入chunk
-  int32 startposi = 1;          // chunk中开始长度
-  int32 length = 2;             // 写入数据长度
-  bytes data;     // set_data(字符串)即可。
-}
-
 message ChunkServerInfo{
-  IpPort position;           // 位置信息
-  int32 chunkaddcount = 2;  // 最近增加chunk数量
+  IpPort position = 1;           // 位置信息
+  int32 chunkaddcount = 2;  // 最近增加chunk数量,就是a时 --> a + 1时的剩余数量。a + 1一过就清0
   repeated int32 remain =3; // 剩余容量
   repeated int32 maxcap = 4;// 最大容量
 }
+message Chunkid{
+  int64 chunkid = 1;
+}
+message CreateChunkidList{
+  repeated int64 chunkid = 1;
+}
+
 message IpPort{
-  string ip;
-  string port;
+  string ip = 1;
+  string port = 2;
 }
 
 
