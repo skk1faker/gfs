@@ -1,0 +1,71 @@
+[
+    {
+        "arguments": [
+            "g++",
+            "-c",
+            "-std=c++11",
+            "-I.",
+            "-DNOMINMAX",
+            "-maes",
+            "-msse4.1",
+            "-DNOMINMAX",
+            "-maes",
+            "-msse4.1",
+            "-DNOMINMAX",
+            "-I/usr/local/include",
+            "-pthread",
+            "-W",
+            "-o",
+            "chunkserver",
+            "chunkserver.cpp"
+        ],
+        "directory": "/home/skt1faker/my_procedure/opensource/distribute_file/new_dfs",
+        "file": "chunkserver.cpp"
+    },
+    {
+        "arguments": [
+            "g++",
+            "-c",
+            "-std=c++11",
+            "-I.",
+            "-DNOMINMAX",
+            "-maes",
+            "-msse4.1",
+            "-DNOMINMAX",
+            "-maes",
+            "-msse4.1",
+            "-DNOMINMAX",
+            "-I/usr/local/include",
+            "-pthread",
+            "-W",
+            "-o",
+            "chunkserver",
+            "rpc/gfs_server.pb.cc"
+        ],
+        "directory": "/home/skt1faker/my_procedure/opensource/distribute_file/new_dfs",
+        "file": "rpc/gfs_server.pb.cc"
+    },
+    {
+        "arguments": [
+            "g++",
+            "-c",
+            "-std=c++11",
+            "-I.",
+            "-DNOMINMAX",
+            "-maes",
+            "-msse4.1",
+            "-DNOMINMAX",
+            "-maes",
+            "-msse4.1",
+            "-DNOMINMAX",
+            "-I/usr/local/include",
+            "-pthread",
+            "-W",
+            "-o",
+            "chunkserver",
+            "rpc/gfs_server.grpc.pb.cc"
+        ],
+        "directory": "/home/skt1faker/my_procedure/opensource/distribute_file/new_dfs",
+        "file": "rpc/gfs_server.grpc.pb.cc"
+    }
+]

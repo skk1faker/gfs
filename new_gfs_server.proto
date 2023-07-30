@@ -6,12 +6,16 @@ package gfs;
 
 service ChunkService{
   //rpc get_heartbeat(VoidMessage) returns(HeartBeat){} // 上面的接口中，必须有参数和返回值，如果不需要参数或者返回值，也必须定义一个空的（没有成员）message，否则无法通过编译。
+  // 垃圾检查
+  rpc get_error_chunk(VoidMessage) returns(ChunkErrorList){}  //返回有问题的chunk列表
+  rpc recover_error_chunk(ChunkDataList)returns(VoidMessage){}    //利用chunk组重写有问题的chunk
   // 读写, 注意读写的时候修改元数据。
   rpc write_chunk(ChunkData)returns(){} 
   rpc delete_chunk(ChunkData)returns(){}    // 只使用chunkdata中的一些数据标识
   rpc add_new_chunk(Chunk)
   // 上报信息
   rpc report_info()returns(ChunkServerInfo){}   // 包括负载均衡的一些信息
+  rpc report_bad_chunk()returns(){}              // 返回有问题的chunk，校验码不正确。
 
 }
 message ChunkServerInfo{
@@ -37,6 +41,11 @@ service Master{
   //
   rpc read_lock()returns(){}        // 读前client调用
   rpc read_unlock()returns(){}      // 读后成功或者失败client都会调用。
+  rpc split_chunk_inposi()returns(){}      // 在某个地方将一个chunk分裂开，方法是新开一个chunk，将部分数据移入新chunk，然后删除老chunk中部分数据，就完成了分裂，这个用于插入数据
+  rpc delete_chunk_part()returns{}        //
+  // chunk如何
+  // client 不会删除chunk，文件的删除是通过追加进行，所以我们只实现追加。
+  rpc snapshot(FilePosition)returns(VoidMessage){}          // 新建一个文件节点，然后复制其原文件节点信息，同时外部维护一个
   // 日志维护,也是元数据的维护。日志可以使用一个结构体如下：
   /*
     struct log{

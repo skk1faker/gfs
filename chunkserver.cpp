@@ -21,15 +21,10 @@ using grpc::Status;
 using grpc::Server;
 
 
-class Chunk
+class Chunk;
 
 Status Chunk::get_heartbeat(ServerContext *context, const ChunkServer::VoidMessage *voidmessage, ChunkServer::HeartBeat *heartbeat){
     heartbeat->set_worktimes(10);
-    heartbeat->set_chunkaddcount(11);
-    heartbeat->add_chunkaddlist(12);
-    heartbeat->add_chunkaddlist(13);
-    heartbeat->add_chunkaddlist(14);
-    heartbeat->add_chunkdellist(12);
     return Status::OK;
 }
 
